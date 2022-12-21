@@ -2,14 +2,14 @@
  * SSD1306.c
  *
  * Created: 05.12.2022 18:26:00
- *  Author: dytec
+ *  Author: Schumacher
  */ 
 
 #include	<avr/io.h>
 
 #define		I2C_DDR			DDRC
 #define		I2C_PIN			PINC
-#define		I2C_PORT		PORTC
+#define		I2C_PORT			PORTC
 
 #define		I2C_SCL_PIN		PINC5
 #define		I2C_SDA_PIN		PINC4

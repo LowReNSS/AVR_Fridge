@@ -2,17 +2,13 @@
  * DS18B20.c
  *
  * Created: 05.12.2022 18:48:39
- *  Author: dytec
+ *  Author: Schumacher
  */ 
 
 #define F_CPU 8000000UL
 
 #include	<avr/io.h>
 #include	<util/delay.h>
-
-//#define DQ_APU_ENABLE()  DDRB |=  (1 << PINB0); // Enable Strong Power Up / Power Down
-//#define DQ_APU_DISABLE() DDRB &= ~(1 << PINB0);	
-
 
 #define OW_DQ_PIN	PIND2
 #define OW_DDR		DDRD
@@ -73,7 +69,7 @@ static inline void OW_send_byte(uint8_t byte)
 	/*if(byte == 0x44) DQ_SET_SPU();*/
 }
 
-uint8_t OW_read_byte(void)
+static inline  uint8_t OW_read_byte(void)
 {
 	uint8_t byte = 0;
 	
@@ -93,7 +89,7 @@ uint8_t OW_read_byte(void)
 	return byte;
 }
 
-uint8_t OW_CRC8_calc(uint8_t *data, uint8_t size)
+static inline uint8_t OW_CRC8_calc(uint8_t *data, uint8_t size)
 {
 	if(data == 0) return 255;
 	uint8_t crc = 0;
@@ -113,26 +109,6 @@ uint8_t OW_CRC8_calc(uint8_t *data, uint8_t size)
 	return crc;
 }
 
-uint8_t OW_CRC8_verify(uint8_t *data, uint8_t size)
-{
-	if(data == 0) return 0;
-	uint8_t crc = 0;
-	for(uint8_t i = 0; i < size; i++)
-	{
-		uint8_t value = data[i];
-		uint8_t tmp = 0;
-		for(uint8_t j = 0; j < 8; j++)
-		{
-			tmp = (crc ^ value) & 0x01;
-			crc >>= 1;
-			value >>= 1;
-			if(tmp == 1) crc ^= 0x8C;
-		}
-	}
-	
-	if(crc != 0) return 0;
-	return 1;
-}
 
 uint8_t DS18B20_search(uint64_t* addr, uint8_t size)
 {

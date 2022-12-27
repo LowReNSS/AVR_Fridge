@@ -110,7 +110,7 @@ static inline uint8_t OW_CRC8_calc(uint8_t *data, uint8_t size)
 }
 
 
-uint8_t DS18B20_search(uint64_t* addr, uint8_t size)
+uint8_t DS18B20_search_sensors(uint64_t* addr, uint8_t size)
 {
 	if(size > 8) size = 8;
 	
@@ -193,89 +193,52 @@ uint8_t DS18B20_search(uint64_t* addr, uint8_t size)
 	return headCnt;
 }
 
-uint8_t DS18B20_get_raw_temp(uint64_t address, int16_t* temp)
+
+
+uint8_t DS18B20_start_measurement(uint8_t* address)
 {
-	if(temp == 0) return 0;
 	if(!OW_reset()) return 0;
-	
-	if(address == 0)
+	OW_send_byte(0x55);	// MATCH ROM [55h]
+	for(uint8_t i = 0; i < sizeof(address); i++)
 	{
-		OW_send_byte(0xCC);	// SKIP ROM [CCh]
-	}
-	else
-	{
-		OW_send_byte(0x55);	// MATCH ROM [55h]
-		uint8_t* ptr = (uint8_t*)&address;
-		for(uint8_t i = 0; i < sizeof(address); i++)
-		{
-			OW_send_byte(ptr[i]);
-		}
-	
+			OW_send_byte(address[i]);
 	}
 	OW_send_byte(0x44);	// CONVERT T [44h]
-	
 	DQ_SPU_ENABLE();
-	_delay_ms(750);
-	DQ_SPU_DISABLE();
-
-	
-	
-	if(!OW_reset()) return 0;
-
-	if(address == 0)
-	{
-		OW_send_byte(0xCC);	// SKIP ROM [CCh]
-	}
-	else
-	{
-		OW_send_byte(0x55);	// MATCH ROM [55h]
-		uint8_t* ptr = (uint8_t*)&address;
-		for(uint8_t i = 0; i < sizeof(address); i++)
-		{
-			OW_send_byte(ptr[i]);
-		}
-	
-	}
-	OW_send_byte(0xBE);	// READ SCRATCHPAD [BEh]
-
-	uint8_t data[9] = { 0 };
-
-	uint8_t check = 0xFF;
-	for(uint8_t i = 0; i < sizeof(data); i++)
-	{
-		data[i] = OW_read_byte();
-		check &= data[i];
-	}
-
-	if(check == 0xFF) return 0;
-
-	uint8_t crc = OW_CRC8_calc(data, sizeof(data));
-	if(crc != 0) return 0;
-
-	*temp = *(int16_t*)&data;
-	
 	return 1;
 }
 
-uint8_t DS18B20_get_temp(uint64_t address, float* temp)
+
+uint8_t DS18B20_get_measurement(uint8_t* address, float* temp)
 {
-	if(temp == 0) return 0;
 	
-	uint8_t status = 0;
-	for(uint8_t t = 0; t < 3; t++) // Try receive data x3
-	{
-		int16_t rawTemp;
-		if(DS18B20_get_raw_temp(address, &rawTemp) == 0) continue;
-		
-		if((rawTemp & 0xFFF) == 85)
+		if(!OW_reset()) return 0;
+		OW_send_byte(0x55);	// MATCH ROM [55h]
+		uint8_t* ptr = (uint8_t*)&address;
+		for(uint8_t i = 0; i < sizeof(address); i++)
 		{
-			if(DS18B20_get_raw_temp(address, &rawTemp) == 0) continue;
+			OW_send_byte(ptr[i]);
+		}
+		OW_send_byte(0xBE);	// READ SCRATCHPAD [BEh]
+		
+		uint8_t data[9] = { 0 };
+
+		uint8_t check = 0xFF;
+		for(uint8_t i = 0; i < sizeof(data); i++)
+		{
+			data[i] = OW_read_byte();
+			check &= data[i];
 		}
 
-		*temp = (rawTemp >> 4) + (float)(rawTemp & 0x0F) * 0.0625;
-		status = 1;
-		break;
-	}
-	
-	return status;
+		if(check == 0xFF) return 0;
+
+		uint8_t crc = OW_CRC8_calc(data, sizeof(data));
+		if(crc != 0) return 0;
+		
+		int16_t raw_val = *(int16_t*)&data; 
+		if((raw_val & 0xFFF) == 85) return 0;
+		
+		*temp = (raw_val >> 4) + (float)(raw_val & 0x0F) * 0.0625;
+		return 1;
 }
+
